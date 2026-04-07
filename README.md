@@ -37,6 +37,21 @@ Ce projet transforme un Raspberry Pi (ou système Linux équivalent) en hotspot 
 - Adaptateur Wi-Fi compatible
 - Droits root (sudo)
 
+### IMPORTANT : Nettoyage préalable
+Si vous avez déjà testé d'autres configurations hotspot sur votre système, il est **fortement recommandé** de nettoyer avant d'installer :
+
+```bash
+sudo ./nettoyer_services.sh
+```
+
+Ce script :
+- Arrête tous les services potentiellement conflictuels (hostapd, dnsmasq, opennds, etc.)
+- Supprime les anciennes configurations
+- Nettoie les règles iptables
+- Supprime les interfaces virtuelles
+
+**Redémarrez ensuite le système** avant d'installer votre nouveau hotspot.
+
 ### Installation version complète (avec internet)
 ```bash
 sudo ./install_opennds_v3.sh
