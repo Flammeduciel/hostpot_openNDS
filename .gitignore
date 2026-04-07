@@ -1,0 +1,30 @@
+# Fichiers temporaires et logs
+*.log
+*.tmp
+
+# Sauvegardes de configuration
+*.bak
+*.orig
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Éditeurs de texte
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+
+# Documentation générée
+docs/
+
+# Tests
+test/
+tests/
