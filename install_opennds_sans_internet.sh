@@ -134,6 +134,15 @@ EOF
 ip link set "$WIFI_IF" down
 ip link set "$WIFI_IF" up
 
+# Vérification que l'IP statique est bien appliquée
+echo "  Vérification de la configuration IP..."
+if ip addr show "$WIFI_IF" | grep -q "192.168.50.1"; then
+    echo "  -> IP statique 192.168.50.1 confirmée sur $WIFI_IF"
+else
+    echo "  -> Attribution manuelle de l'IP..."
+    ip addr add 192.168.50.1/24 dev "$WIFI_IF"
+fi
+
 
 # ============================================================
 # ÉTAPE 3/8 — SAISIE INTERACTIVE DES PARAMÈTRES UTILISATEUR
@@ -287,9 +296,13 @@ mv /etc/dnsmasq.conf /etc/dnsmasq.conf.orig
 cat > /etc/dnsmasq.conf <<EOF
 # Interface sur laquelle écouter (uniquement le Wi-Fi)
 interface=$WIFI_IF
+bind-interfaces
+
+# Désactiver les requêtes DNS si pas d'internet
+no-resolv
 
 # Plage DHCP : attribue des IPs de .50 à .150, bail 12h
-dhcp-range=192.168.50.50,192.168.50.150,12h
+dhcp-range=192.168.50.50,192.168.50.150,255.255.255.0,12h
 
 # Option 3 = route par défaut (passerelle) → le Pi
 dhcp-option=3,192.168.50.1
@@ -297,13 +310,18 @@ dhcp-option=3,192.168.50.1
 # Option 6 = serveur DNS → le Pi
 dhcp-option=6,192.168.50.1
 
-# Le Pi forward les requêtes DNS vers Google
-server=8.8.8.8
+# Pas de forward DNS vers l'extérieur en mode test
+# server=8.8.8.8
 
 # Journalisation pour débogage
 log-queries
 log-dhcp
 EOF
+
+# Redémarrer dnsmasq pour appliquer la nouvelle configuration
+echo "  Redémarrage de dnsmasq..."
+systemctl restart dnsmasq
+systemctl enable dnsmasq
 
 
 # ============================================================
@@ -431,15 +449,25 @@ iptables -t nat -A PREROUTING \
   -m multiport ! --dports 2050,22 \
   -j DNAT --to-destination 192.168.50.1
 
-# Note : La redirection HTTPS (443) provoquera une erreur
+# Note : La redirection HTTPS (443) provocera une erreur
 # de certificat SSL dans le navigateur client car le Pi
-# ne possède pas de certificat valide pour les domaines
-# demandés. C'est un comportement attendu et connu
-# des portails captifs : les navigateurs modernes gèrent
-# cela en proposant quand même d'accéder à la page.
+# ne possede pas de certificat valide pour les domaines
+# demandes. C'est un comportement attendu et connu
+# des portails captifs : les navigateurs modernes gerent
+# cela en proposant quand meme d'acceder a la page.
+
+# ==========================================================
+# D. RÈGLES OUTPUT - EXCLURE LE TRAFIC LOCAL DU PI
+# ==========================================================
+# IMPORTANT : Exclure le trafic localhost du Pi lui-même
+# Sinon, quand on accede a localhost depuis le Raspberry,
+# OpenNDS redirige vers le portail captif (10.0.0.1)
+# Cette regle permet d'acceder au portail en local sans redirection
+iptables -t nat -A OUTPUT -p tcp --dport 80 -d 192.168.50.1 -j ACCEPT
+iptables -t nat -A OUTPUT -p tcp --dport 80 -d 127.0.0.1 -j ACCEPT
 
 
-# --- Sauvegarde des règles IPTables ---
+# --- Sauvegarde des regles IPTables ---
 # Sans cette commande, toutes les règles disparaissent
 # au prochain redémarrage.
 # iptables-persistent les sauvegarde dans :
